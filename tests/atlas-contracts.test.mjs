@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { isGraph, isAtlasEvent, formatValue, statuses } from '../src/lib/atlas/contracts.ts';
+
+const node = {id:'agents/atlashub/architect',path:'agents/atlashub/architect.md',label:'Architect',kind:'agent',tags:[],frontmatter:{}};
+const graph = {version:1,generatedAt:'2026-11-11T12:00:00.000Z',nodes:[node],links:[],unresolved:[]};
+test('valid empty and populated graphs are accepted',()=>{assert.ok(isGraph(graph));assert.ok(isGraph({...graph,nodes:[]}));});
+test('malformed external graphs cannot crash UI',()=>{for(const bad of [null,{}, {...graph,nodes:[null]}, {...graph,nodes:[{...node,tags:null}]},{...graph,nodes:[{...node,kind:'__proto__'}]},{...graph,nodes:[node,node]},{...graph,links:[{source:node.id,target:'missing',type:'wikilink'}]},{...graph,unresolved:null},{...graph,generatedAt:'invalid'}])assert.equal(isGraph(bad),false);});
+test('telemetry accepts versioned known events with data and valid time',()=>{const event={version:1,id:'event-1',runId:'run-1',agentSlug:'architect',type:'agent:start',timestamp:graph.generatedAt,data:{}};assert.ok(isAtlasEvent(event));assert.equal(isAtlasEvent({...event,type:'execute:arbitrary'}),false);assert.equal(isAtlasEvent({...event,data:null}),false);assert.equal(isAtlasEvent({...event,timestamp:'broken'}),false);});
+test('CRM value keeps the lead currency and missing value explicit',()=>{assert.match(formatValue({...node,frontmatter:{value:100,currency:'GBP'}}),/£|GBP/);assert.equal(formatValue({...node,frontmatter:{value:'abc'}}),'Valor não definido');assert.match(formatValue({...node,frontmatter:{value:50,currency:'???'}}),/50.*\?\?\?/);});
+test('CRM lifecycle matches shared contract',()=>assert.deepEqual([...statuses],['new','qualified','proposal','won','lost']));

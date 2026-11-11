@@ -1,0 +1,18 @@
+# gitleaks configuration for brew-browser
+#
+# Extends the default ruleset and allowlists strings that gitleaks'
+# generic-api-key regex matches but that are NOT secrets in this codebase.
+[extend]
+useDefault = true
+
+# Allowlist the public GitHub OAuth Device Flow client_id. Per RFC 8628,
+# Device Flow client_ids are PUBLIC by design — they identify the app to
+# GitHub for the consent screen and audit logs, but cannot be used to
+# obtain a token without the user actively approving at github.com/login/device.
+# The client_id is intentionally hardcoded in src-tauri/src/github/auth.rs
+# (committed into every binary) and documented in the memory bank. See
+# the long-form comment header in github/auth.rs for the security rationale.
+[[allowlists]]
+description = "GitHub OAuth Device Flow client_id (RFC 8628-public)"
+regexTarget = "match"
+regexes = ['''Ov23liJZKbvrSBuiOPkT''']

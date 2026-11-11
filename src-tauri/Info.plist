@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		macOS 26 (Tahoe) Liquid Glass app icon. Tauri merges this into the
+		generated Info.plist. CFBundleIconName points the OS at the "AppIcon"
+		image set inside Contents/Resources/Assets.car (compiled from
+		docs/icon/AppIcon.icon via `actool`; shipped via bundle.resources), so
+		Tahoe renders the live glass treatment. The legacy CFBundleIconFile
+		(icon.icns, set by Tauri from bundle.icon) remains the fallback for
+		macOS ≤ 25, which ignore the asset catalog.
+	-->
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+</dict>
+</plist>

@@ -1,0 +1,78 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Agency Agents — root .gitignore
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Rust build artifacts (BIG — multiple GB; never commit)
+target/
+src-tauri/target/
+
+# Node deps + build output
+node_modules/
+/build
+.svelte-kit/
+/dist
+/package
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Tauri generated platform projects (regeneratable; can be committed if desired,
+# but for early-stage we let `tauri icon` produce them on demand)
+src-tauri/gen/
+
+# Secrets — pattern allowlist; *.example files are kept
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+*.pem
+*.key
+
+# macOS code-signing / notarization / updater secrets — NEVER commit these.
+# (Notary password + updater private key live in the Keychain; see scripts/release.sh.)
+*.p12
+*.cer
+*.cert
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+# Tauri minisign updater private keys (public key lives in tauri.conf.json).
+*.key.pub.bak
+.tauri/
+src-tauri/.tauri/
+
+# Tool-local state (always regenerable)
+.phase-c/
+
+# Cargo deny temp downloads
+src-tauri/.cargo/registry/
+src-tauri/.cargo/git/
+
+# Coverage / profiling
+*.profraw
+*.lcov
+
+# OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Editor noise
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+.idea/
+*.iml
+
+# Python noise (the categorize tool)
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# Icon previews — regenerable from the brain-circuit source art.
+docs/icon/preview-*.png
+docs/icon/**/preview-*.png

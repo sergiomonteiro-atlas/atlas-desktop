@@ -1,0 +1,10 @@
+firefoxpwa
+firefly
+
+firefox
+firefox@beta
+firefox@cn
+firefox@developer-edition
+firefox@esr
+firefox@nightly
+multifirefox

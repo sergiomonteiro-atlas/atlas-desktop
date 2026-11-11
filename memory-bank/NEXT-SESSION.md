@@ -1,0 +1,283 @@
+# Next session
+
+**Start here (2026-09-15).** v0.3.1 is cut and validated. `main` @ `32641d5`. PR **#104** is the release candidate —
+Linux and Windows CI green on its exact head — and merging it is step one.
+
+1. **Merge #104**, then **#103** (this PR; supersedes #86 — close #86), then **#82** (missing Healthcare string) and
+   **#81** (RTL: `main` has no direction handling at all; the Farsi UI only looked right because browsers apply bidi
+   to Arabic script).
+2. **Build the Mac DMGs here** — `scripts/release.sh`. Developer ID and the notarisation password come from the
+   Keychain (`agency-agents-notary`), so this step cannot run on CI. Both architectures.
+3. **Tag `v0.3.1`, cut the release**: two DMGs from this machine, deb/rpm/AppImage and two `-setup.exe` from CI.
+4. **Bump the Homebrew cask** — `version` plus both `sha256`, computable only once the DMGs exist. The tap is
+   `msitarzewski/homebrew-agency-agents`; the `verified:` deprecation is already fixed at `551d6eb`.
+5. **Then #100** (`cargo fmt`, 18 files) — last, so it conflicts with nothing. Turn on `cargo fmt --check` in
+   `pr-check.yml` in the same commit, not before.
+
+**Two known bugs, neither fixed.** The `PYTHONHOME`/`PYTHONPATH` leak into AppImage children (breaks `aider`
+detection for every AppImage user; two entries in `util/proc.rs`), and the Tauri CLI rewriting `Cargo.toml` on every
+macOS build. Both are described in `activeContext.md`.
+
+**Do not close #65** until someone launches a fresh install on a clean Windows box. The VM has WebView2
+`153.0.4234.32` already installed, so the failure mode cannot reproduce there without removing the runtime first.
+
+
+---
+
+# NEXT SESSION — resume notes (Agency Agents)
+
+Read this first after a compaction. Then `activeContext.md`, `agentLog.md` (append-only history),
+`phases/phase-roadmap.md`, `contracts.md`, `systemPatterns.md`, `decisions.md`.
+
+## ⏩ CURRENT (2026-09-12) — start here
+
+**The app's problem is not code, it is that nothing ships.** Last release **v0.3.0, 2026-07-05**. `main` sat
+unchanged 07-30 → 09-12. **16 open PRs, 16 open issues, every PR mergeable with zero conflicts.** Six PRs are ours.
+Several open issues may already be fixed on `main` and nobody can tell. **Do a v0.3.1 before writing more code.**
+
+### The cheapest path to a much better app
+1. Merge the small, already-written platform fixes: **#69** (Windows WebView2 bootstrapper, +3 lines — the likely
+   fix for #65 "window never opens"), **#85** (@ROTl24, console-window flash → #84), **#99** (@Musa919, Linux
+   AppArmor in the release container).
+2. Then the low-risk contributor work: #97 docs, #98 dep bumps, #101 Turkish i18n, #80 winget docs, #77 build fix.
+3. **Tag v0.3.1.** Release-build gotchas are unchanged and still live in `BUILD.md` / `release.sh` — updater-on
+   macOS builds must pass `--config`, Intel cross-compile needs the rustup toolchain, store the Keychain key via
+   `$(cat …)`, asset names use underscores.
+4. **#100 (`cargo fmt` the whole backend) should land on its own, ideally last** — it touches ~everything and will
+   conflict with anything in flight. `cargo fmt` is *not* clean on `main` today, so until #100 lands, format only
+   files you add.
+
+### Landed 2026-09-12 (PR #102) — and the durable lesson
+Closed **#94** (AppImage could not clone the catalog on any non-build host) and **#92** (`[object Object]`).
+The lesson worth keeping: **anything an AppImage spawns must have the bundle stripped from its environment first.**
+`AppRun` puts the bundle's `LD_LIBRARY_PATH` first and keeps no copy of the original, so a *host* binary loads
+*bundle* libraries. `run_git` was only the visible victim — `probe_version` (tool detection) and `reveal_path` were
+equally poisoned. When a report names one symptom, `grep -rn "Command::new"` for the siblings before calling it fixed.
+
+### Test bed for Linux work (new)
+`ssh scratch` — Ubuntu 26.04.1 aarch64, passwordless root, git/curl/node/cargo present. Left in place:
+`/tmp/ld-repro/lib/libnghttp2.so.14` (a genuine Ubuntu 22.04 arm64 build; put it on `LD_LIBRARY_PATH` to reproduce
+#94 on any host) and `/tmp/appimg/` (the v0.3.0 AppImage unsquashed — offset is `e_shoff + e_shentsize×e_shnum`
+from the ELF header). **Releases ship an amd64-only AppImage**, so the shipped Linux artifact cannot be *run* on
+that ARM box; reproduce mechanisms or build arm64 locally.
+
+### Gates
+`npm run check` = **0 errors on clean `main`** — take the baseline before blaming your diff. `cargo test` for the
+backend. No `lint`, no `test` npm script. A fresh worktree needs `npm ci`.
+
+---
+
+## ⏩ CURRENT (2026-08-10) — post-v0.3.0 steady state; RTL Phase 1 in flight
+`main` @ `04c10be` (Persian #73 merged). **v0.3.0 shipped ~07-05** (Runbooks headline). Since then: a long
+steady-state of contributor merges + polish + i18n; **no new release cut yet**.
+
+**Merged this arc (all branch→PR):** #56 i18n copy · #58 Linux AppImage EGL crash (un-bundle stale libwayland)
+· #59 Russian Runbooks · **#68 agent-updates modal** ("N updates available" agents×tools dot-grid) · **#64 ZCode
+tool** (Z.ai GLM; `zcode-md` == `qwen-md`) + **#70 ZCode brand icon** (lobehub zhipu mark) · #63 project-only
+install guidance (**closed #40**) · **#74 Antigravity uninstall fix** (`remove_dir` the orphaned skill-md
+`<slug>/` dir — **closed #60**) · **#73 Persian (fa-IR)** (montajebii; **closed #72**).
+
+**OPEN PRs (8, all MERGEABLE):** **#81 RTL Phase 1** (mine) · **#82 Healthcare division label** (mine) · #85
+Windows console flash · #80 winget README · #77 `npm run tauri` TAURI_CONFIG fix (kills the macos-private-api
+footgun properly) · #69 WebView2 embedBootstrapper · #67 clone-on-first-run (removes bundled baseline — big
+surface) · #62 Runbooks doc-render/staged. → **#67/#69 want Linux+Windows CI dispatched before merge** (app CI =
+tags/dispatch only).
+
+**RTL = this session's focus. Phase 1 = PR #81, verified live in Persian on macOS.** The switch is ONE line —
+`document.documentElement.dir = isRTL(locale) ? "rtl" : "ltr"` in `applyLocale` (i18n.svelte.ts) — and the
+flexbox-heavy UI mirrors ~everything for free. The two spots that CAN'T: the **titlebar** (absolutely positioned
+by physical `left:` offsets → swapped to `right:` in RTL in `+page.svelte`, with a macOS **traffic-light
+clearance** since the OS lights never mirror) and **Settings.svelte**'s bespoke close-X (`right:` →
+`inset-inline-end`). `RTL_LOCALES = ["fa"]` in messages.ts. **Phase 2 (NOT started, ~½ day, captured in #81
+body):** logical-property sweep of ~13 overlay positions (Toast/CommandPalette/InstallModal/DiffModal/…),
+`text-align: left`→`start` (~38), the division-row internals, and chevron/arrow directional-icon mirroring.
+**KEY DESIGN FACT:** agent names/descriptions are **catalog content (English, authored upstream) — NOT translated
+by design** (`en.ts:49` documents it: chrome is localized, "persona content stays as authored upstream"). Only
+app chrome + division `category.*` labels are i18n. So English agent names in a Persian UI = correct, not a bug.
+#82 fixed a stale-catalog i18n gap (app kept dead `category.strategy`, lacked `category.healthcare`).
+
+**OPEN ISSUES:** #79 "58 but only 57 identified" (screenshot-only, untriaged) · #76 catalog-aware "Find the right
+agent" recommender (my tracking issue crediting @Rawlus7's catalog #634 draft; referral posted, quiet) · #71
+OpenClaw + #66 Antigravity Windows detection ("installed-but-not-detected" pair, likely shared root cause; not
+started) · #65 Windows launch (waits on reporter) · #27 skills · #26 Hermes. #75 closed as spam.
+
+**DEV GOTCHAS (hard-won this session):** (1) `tauri dev` on macOS re-injects `macos-private-api` into base
+`Cargo.toml` — run with `--config '{"app":{"macOSPrivateApi":true}}'`, `git checkout Cargo.toml` after (PR #77
+fixes it). (2) **Vite does NOT watch `src-tauri/data/tools.json`** (outside `src/`) — after a change touching it,
+`⌘R` won't help; **restart the dev server**. Dev-only (prod bundles fresh). (3) A new catalog integration NEVER
+auto-appears — Tools list is compiled in (`registry.rs include_str!` + `IMPLEMENTED_FORMATS`), so it needs a
+**paired app PR** (def + renderer + format gate + icon). (4) Forcing locale via `init()` doesn't take on first
+paint (SSR→English, hydration doesn't re-flip) — use the picker or a saved localStorage locale.
+
+**Icon WIP:** a re-authored Liquid Glass `.icon` (neon brain render) was **reverted to `git stash`** — the render
+baked in its own frame/gloss/shadow, wrong shape for the OS-applied Liquid Glass pipeline. Recoverable if wanted.
+
+---
+
+## ⏩ (history) CURRENT (2026-06-23) — read `activeContext.md` for the live picture
+**v0.2.0 SHIPPED** (`main` @ `16182e5`, PRs #21 + #22) — first feature release since v0.1.0, rolling up the
+v0.1.1 IA re-org (divisions landing, Teams, Projects pillar, the single InstallModal grid + DeployBrowser) and
+v0.1.2 tool-registry/Osaurus/Playbook arc, **plus LIVE auto-update**. 9 release assets across macOS (aarch64+x64,
+signed/notarized) / Linux (deb/rpm/AppImage) / Windows (x64/arm64); Homebrew cask @ 0.2.0. Auto-update is live at
+`agencyagents.app/updater.json` for **both Mac arches** — dedicated agency signing key `ABF5AFD8` (private key +
+password in the macOS **Keychain**; canonical backup `~/.config/agency-agents-app/updater.key`).
+**Release-build gotchas (hard-won, now in `BUILD.md` + `release.sh`):** updater-on macOS builds must pass a
+`--config` (the macos-private-api allowlist reads only base `tauri.conf.json` — tauri#11142); Intel cross-compile
+needs the **rustup** toolchain (Homebrew rust is host-only); store the updater Keychain key via `$(cat …)` not a
+paste; v0.2.0 asset names use **underscores**. Much further below predates v0.1.0 (counts/paths may be stale) —
+`activeContext.md` + `agentLog.md` (2026-06-23) are authoritative. **NEXT: opt-in automatic install** (wire the
+inert toggle) + the rest of the post-0.2.0 punch list in `docs/PLAN.md`.
+
+## ✅ THE RE-ORG LANDED (verified 2026-06-14)
+The catalog re-org happened: the active clone now indexes **232 agents** (was ~222). The parity test
+runs against this live clone and passes 1160/1160, so category discovery + recursive indexing absorbed
+the change cleanly. The warning below is retained for the next re-org — re-run the parity/diagnostics
+after any future catalog reshuffle.
+
+## ⚠️ (retained) A RE-ORG MAY COME AGAIN
+Before building on catalog assumptions, RE-VERIFY them — the catalog repo and/or app layout may be
+reorganized. After any such change, re-check:
+- The active catalog source path (currently a **userClone** — see below) and whether it moved.
+- Category discovery: we parse `AGENT_DIRS` from `<root>/scripts/convert.sh`. If the re-org changes
+  divisions / `convert.sh` / nesting, counts + categories shift.
+- Recursive indexing assumptions (nested `<category>/<sub>/<slug>.md`).
+- Agent slugs/counts (was 203 flat → ~222 after recursive indexing picked up nested game-dev agents).
+Don't trust the numbers below blindly post-re-org; re-run the report (see "Diagnostics" at bottom).
+
+## TL;DR
+Native macOS app (Tauri 2 · Svelte 5 runes · Rust) — "app store for AI agents." Browses the
+agency-agents catalog and installs/tracks agents across AI tools. The app IS the cross-tool install
+registry. **State: the install-management loop is real and working.** Signed + notarized build works.
+
+## How to run / critical env facts
+- `npm run tauri dev` (repo root). **DEV PORT = 1430** (HMR 1431).
+- Verify green: `cd src-tauri && cargo test --lib` (**258/0**, +1 `--ignored` parity test); `npm run
+  build`; `npm run check` (0 errors; the only warning is a benign tsconfig `node` note). Full Phase C
+  gate: `npm run build:phase-c` (adds the parity test + config validation; `:full` adds the VM matrix).
+- **Active catalog source = a USER CLONE**, persisted in
+  `~/Library/Application Support/com.zerologic.agency-agents-app/state/catalog.json`:
+  `{"kind":"userClone","path":"/Users/michael/Software/AgentLand/agency-agents","manage":true}`.
+  So the app reads/compares against THAT clone, not the bundled baseline.
+- App data dir (FIXED this session — was wrongly `…/brew-browser/`): all under
+  `~/Library/Application Support/com.zerologic.agency-agents-app/` → `state/{catalog.json,
+  corpus-index.json,corpus-meta.json,installs.json}`, `corpus/` (bundled only), `backups/`, `settings.json`.
+- Michael's reality: ~184 agents installed via the CLI `install.sh` into `~/.claude/agents/`
+  (Claude Code). Report: 157 byte-identical (→ shown `current`), 8 divergent (repo is NEWER → use
+  Update), 19 nested (now indexed after the recursion fix).
+
+## ✅ DONE through 2026-06-09 — unified IA, Dashboard charts, nav, Tools console
+- **Phase A — unified Agents workspace** (`AgentsWorkspace.svelte`; `PersonaDiscover`+`AgentLibrary`
+  deleted). Detail = `PersonaBody` (`deploy` snippet, clickable division pill) + `DeploymentMatrix`
+  (summary pills + "USE WITH" disclosure; user tools = `Switch`, project tools = Install/Add-project).
+- **Phase B — Dashboard charts** (`HealthDonut`, `CoverageMatrix` category×tool, coverage-by-tool bars,
+  category distribution). Dependency-free SVG/CSS; cells/segments deep-link.
+- **Back/forward nav** — `ui` NavLocation history; titlebar ◀▶, ⌘[/], mouse 3/4. `agentsCategory` +
+  `agentsSelected` live in `ui`. **Division deep-links** via `ui.openDivision`. Lens counts narrow to the
+  division; "Not installed" lens added; zero-count lenses/stats auto-hide.
+- **Tools console** — `ToolsView` rebuilt as list/detail two-pane: badges (`util/toolBadge.ts`), health
+  bars, versions, Reveal folder, Default-target Switch, Sync/Track-all/Remove-all, projects. New Rust
+  commands `reveal_path` + `tool_versions` (+ `ToolVersion`). Best-effort version probe is uneven (GUI
+  tools / differently-named CLIs show none) — that's expected.
+- **macOS 26 Tahoe Liquid Glass icon FIXED.** Tahoe renders from a compiled `Assets.car` (Icon Composer),
+  not `.icns` → `.icns`-only = blank squircle. `actool` (full Xcode only, by path) compiles
+  `docs/icon/AppIcon.icon` → `src-tauri/Assets.car` (in `bundle.resources`) + Tahoe-aware `icon.icns`;
+  `src-tauri/Info.plist` adds `CFBundleIconName=AppIcon` (Tauri merges). Recipe: `docs/icon/
+  README-liquid-glass.md`. **Don't run `npm run tauri icon`** (clobbers the glass icns). Dev Dock hack
+  REMOVED (lib.rs plain `.run()`, objc2 deps gone).
+
+**✅ Phase C cross-platform chrome — DONE 2026-06-14.** Config split: base `tauri.conf.json` is
+cross-platform-safe (`decorations: true`, opaque, no macOS-only keys → Windows/Linux native titlebars);
+new `tauri.macos.conf.json` override re-adds `macOSPrivateApi` + `transparent` + `titleBarStyle: Overlay`
++ `hiddenTitle` + `trafficLightPosition` so macOS keeps the custom overlay titlebar.
+`TitlebarControls.svelte` handles the degradation path. The rest was already platform-clean
+(⌘/Ctrl via `util/platform.ts`, "this device" copy, Rust reveal/home paths).
+
+## ✅ IMMEDIATE backlog — BOTH CLOSED 2026-06-14 (Phase C)
+1. **Renderer parity for transform tools — VERIFIED.** `render/mod.rs` now mirrors the upstream shell
+   converter byte-for-byte: `source_field` = `lib.sh#get_field` (literal field:value between `---`
+   fences, quotes preserved — not YAML), `source_body` = `body="$(get_body)"` awk + command-sub newline
+   semantics, `slugify` = `lib.sh#slugify`, `output_slug` = converter filename rules (identity tools keep
+   the source name, transform tools derive from frontmatter `name`), Qwen optional `tools` line literal.
+   The `--ignored` test `upstream_convert_sh_is_byte_identical_for_transform_tools` shells out to the
+   REAL `scripts/convert.sh` and diffs every transform tool: **232 agents × 5 tools = 1160/1160
+   byte-identical** (Cursor `.mdc`, Codex TOML, Gemini, opencode, qwen). State correctness is proven.
+   To re-run: `AGENCY_AGENTS_PARITY_ROOT=/Users/michael/Software/AgentLand/agency-agents cargo test
+   --manifest-path src-tauri/Cargo.toml --lib upstream_convert_sh_is_byte_identical_for_transform_tools
+   -- --ignored --nocapture` (or `npm run build:phase-c`).
+2. **uninstall backup decision — RESOLVED: recoverable ✕.** `remove_agent_files` runs a backup-first
+   pass (`backup_if_differs` per destination) BEFORE any delete, so a backup failure can never strand a
+   half-removed agent. Modified/divergent files back up to `backups/` first; byte-identical/canonical
+   files need NO backup (re-installable); a backup failure ABORTS the delete and preserves the original.
+   Fully tested (`uninstall_modified_file_backs_up_before_delete`, `uninstall_canonical_file_needs_no_backup`,
+   `uninstall_backup_failure_preserves_original`, …).
+
+## Backlog (not immediate)
+- **Local-runtime system-prompt target (NEW, Michael 2026-06-08)**: a separate target CLASS for model
+  runtimes — Ollama (`Modelfile` `SYSTEM "…"`) and LM Studio (preset/system prompt) — where an agent is
+  deployed as the model's system prompt, not a per-tool agents/*.md. Needs its OWN renderer + a runtime
+  locator + a reconcile story (no agents dir to scan; track the generated Modelfile/preset). NOT a missing
+  entry in the agent-host `Tool` set — those ingest a persona file; runtimes serve weights. Its own track.
+- **#8 multi-file renderers** (antigravity, openclaw, aider, windsurf) — error cleanly today.
+- `aliases.json` (slug renames), explicit orphan surfacing, `.agency-cache/` convention.
+- **Tech-debt (brew plumbing, invisible)**: dead `Settings` fields (caskIconMode, trendingTtl,
+  catalogAutoRefresh, catalogStaleBannerDays, enhanced_trending, live_enrichment, vulnerability_scanning,
+  aiFeaturesEnabled) in backend `commands/settings.rs` + frontend `types.ts`; `BrewErrorPayload` /
+  `isBrewError` / `BrewStreamEvent` type names + dead codes in `types.ts`; `reportIssue.ts` shell-exit
+  semantics; leftover `tools/` brew pipeline in the tree. `catalog_auto_refresh` has NO scheduler (dead).
+- Updater: minisign key NOT set up (builds run `SKIP_UPDATER=1`). Endpoint placeholder
+  `agency-agents-app.zerologic.com/updater.json`. `updater.pubkey` in tauri.conf is a placeholder.
+
+## What's built + working (this session's arc)
+- **Catalog-as-source-of-truth (#1)**: CatalogSource {bundled|managed|userClone}; detect / provision
+  (git clone or tarball) / pull / `catalog_status` / `catalog_check_updates` (git behind/ahead +
+  diffstat); first-run picker; Settings → Catalog (git status + GitHub repo stats + sign-in, reusing
+  the existing `github` store). Categories parsed from `convert.sh` AGENT_DIRS. **Recursive indexing**
+  (nested clone agents now found; `read_source` resolves nested paths).
+- **Install safety + states**: Adopt→**Track** (records, no write); every write backs up first;
+  `agent_diff`; **byte-identical foreign → `current`** (auto-recognized, no "adopt" ceremony).
+- **Unified Agents workspace (replaces Library + the catalog browse)**: `AgentsWorkspace.svelte` three-
+  pane. List pane = filter lens (All/Installed/Needs-attention/Untracked, live counts) + search +
+  Category ▾ + Select-mode bulk (Update/Track/Delete; Delete confirms, warns no-undo; `install.bulk()` =
+  one reconcile). Detail pane = `PersonaBody` + `DeploymentMatrix`. The matrix: summary pills for
+  installed tools (state-dotted) + a "USE WITH" disclosure where user tools toggle via `Switch.svelte`
+  and project tools (Cursor/opencode) keep Install/Add-project + per-project sub-rows; Diff (`DiffModal`
+  + `util/diff.ts`) / Track / Update inline when applicable. `PersonaDiscover` + `AgentLibrary` deleted.
+- **Settings refocused** to Agency Agents (Network/GitHub/About/Appearance/Updates rewritten; dead brew
+  toggles removed). **`BrewError`→`AppError`** rename + dead-code purge (0 warnings).
+- **Window/panel persistence**: resizable + persisted sidebar + agent-detail panel; window geometry
+  saves on resize (survives dev kills).
+- **Install-into = multi-select** with remembered selection (`PersonaDiscover`).
+- **Signed + notarized build WORKS**: `scripts/release.sh` (pulls notary pw + updater key from
+  Keychain). `SKIP_UPDATER=1 ./scripts/release.sh` → Gatekeeper-accepted, notarized, stapled
+  `Agency Agents.app` + signed `.dmg`. Notary creds: keychain service `agency-agents-notary`, account
+  `msitarzewski@mac.com`, **Team `7JQGQ7CRH8`**, Apple ID `msitarzewski@mac.com`. Developer ID cert is
+  in the keychain. `.gitignore` hardened for signing secrets.
+- **Icon**: new white-glyph-on-purple icon shipped (`src-tauri/icons/*`, flat). Liquid Glass layered
+  source staged in `docs/icon/` (`AppIcon.icon` validates with actool; `layers/`) for macOS 26 Tahoe —
+  NOT yet wired into the build (standalone `actool` won't compile a `.icon`; Icon Composer is the path).
+
+## GOTCHAS (don't relearn)
+- **Frozen/blank view → open the webview devtools console FIRST.** (The `each_key_duplicate` saga.)
+- **Render parity is now load-bearing** (see immediate #1).
+- **Byte-identical foreign = `current`** is computed live in `installs_reconcile` (no ledger write).
+  For transform tools this only works if parity holds.
+- **Recursive indexing**: `build_from_dir` + `read_source` recurse; bundled baseline is flat (count
+  unchanged 209), real clones nest.
+- **Can't self-screenshot the app** — ask Michael.
+- Dev Dock label = binary name; only a real `tauri build` makes it match productName.
+
+## Diagnostics (re-run after the re-org)
+The "what differs" report (replicates the app's compare logic) is a python one-liner pattern: read
+`state/corpus-index.json` for slug→category, walk `~/.claude/agents/*.md`, compare each to
+`<clone>/<category>/<slug>.md` (fall back to recursive find for nested). See agentLog 2026-06-08 entry
+for the exact script — it found 157 identical / 8 divergent / 19 nested-unknown.
+
+## Key files
+- Backend: `src-tauri/src/{corpus,render,install,github,util}/`, `state.rs`, `types.rs`, `error.rs`
+  (now `AppError`), `lib.rs`. Tauri: `src-tauri/tauri.conf.json` (id com.zerologic.agency-agents-app,
+  port 1430, signingIdentity, updater endpoint placeholder).
+- Frontend: `src/lib/components/{AgentsWorkspace,PersonaBody,DeploymentMatrix,Switch,DiffModal,
+  CatalogFirstRun,SettingsSectionCatalog,Sidebar,ResizeHandle}.svelte`,
+  `src/lib/stores/{install,catalog,corpus,ui}.svelte.ts`, `src/lib/util/{diff,platform,reportIssue}.ts`,
+  `src/routes/{+page,+layout}.svelte`. (PersonaDiscover + AgentLibrary were deleted in the IA re-org.)
+- Release: `scripts/release.sh`. Icon source: `docs/icon/{AppIcon.icon,layers/,README-liquid-glass.md}`.

@@ -1,0 +1,116 @@
+[package]
+name = "atlas-desktop"
+version = "0.3.2"
+description = "Atlas Desktop — a native macOS app store for AI agents."
+authors = ["Sérgio Monteiro / AtlasHub", "Michael Sitarzewski (upstream)"]
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "agency_agents_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["wry", "compression", "common-controls-v6", "dynamic-acl", "x11", "dbus"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+# Issue #17 — persist window size + position across launches. Registered in
+# `lib.rs`; auto-saves geometry on move/resize and on exit, then restores it
+# on the next launch. No frontend wiring — the plugin hooks window events
+# natively, so registration is the whole feature.
+tauri-plugin-window-state = "2"
+# Phase 15 — in-app updater (manifest fetch, sha256 + minisign verify,
+# atomic .app bundle replacement). Plugin endpoint + minisign public
+# key are wired in `tauri.conf.json` and `src/lib.rs` respectively.
+tauri-plugin-updater = "2"
+# Phase 15 — needed for the `UpdaterBackend` trait abstraction so unit
+# tests can swap in a mock implementation without going through the
+# real plugin (which requires a live `App` + HTTP).
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["process", "io-util", "rt-multi-thread", "macros", "sync", "time"] }
+
+# Error handling
+thiserror = "1"
+
+# Job IDs and timestamps
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# HTTP for trending analytics
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "gzip"] }
+
+# OS-correct paths for ~/Library/Application Support
+dirs = "5"
+
+# Base64 encoding for cask_icon data URLs
+base64 = "0.22"
+
+# v0.5.0 — install-set fingerprinting + cache-key hashing for the
+# vulnerability-scanning subsystem. SHA-256 keeps the fingerprint stable
+# across runs (DefaultHasher is non-deterministic) so the "install set
+# unchanged since last scan, skip the whole sweep" optimization works.
+# Both already transit through the lockfile via tauri-plugin-updater /
+# reqwest — pinning them here makes the dependency intentional rather
+# than incidental.
+sha2 = "0.10"
+hex = "0.4"
+
+# Gzip codec for the bundled catalog (Phase 12a). Used both for
+# decompressing the bundled `formula.json.gz` / `cask.json.gz` and for
+# compressing the user-refreshed copy before atomic write. The corpus
+# subsystem (Phase 1) also uses it to gunzip the GitHub `tar.gz`.
+flate2 = "1"
+
+# Phase 1 (corpus) — frontmatter parsing + tarball extraction.
+# `serde_yaml` tolerantly parses the YAML frontmatter block between the
+# `---` fences of each agent `.md`. `tar` unpacks the GitHub
+# `codeload …/tar.gz` stream (gunzipped via `flate2`) on `corpus_refresh`.
+serde_yaml = "0.9"
+tar = "0.4"
+
+# Structured logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# URL-encoded form bodies for the GitHub Device Flow endpoints.
+# `serde_urlencoded` is already pulled in transitively by `reqwest`
+# but `url` (parsing) is not. Keep this dep tight.
+url = "2"
+
+# Native macOS window vibrancy (NSVisualEffectView) — gives the sidebar that
+# "frosted glass" look the rest of macOS uses. Cross-platform crate; we only
+# call its macOS APIs.
+[target.'cfg(target_os = "macos")'.dependencies]
+tauri = { version = "2", features = ["wry", "compression", "common-controls-v6", "dynamic-acl", "x11", "dbus", "macos-private-api"] }
+window-vibrancy = "0.6"
+# Direct use of the Security framework for a single batched Keychain read
+# (one SecItemCopyMatching for all GitHub items → one auth prompt instead of
+# three). Pinned to "2" to unify with the version keyring already compiles.
+security-framework = "2"
+
+# OS-native secret storage for the GitHub OAuth token (Device Flow). Every
+# platform uses its native vault through the same `keyring::Entry` API:
+#   macOS   → Keychain           (apple-native)
+#   Windows → Credential Manager (windows-native)
+#   Linux   → Secret Service     (gnome-keyring / KWallet over D-Bus)
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Pure-Rust zbus + RustCrypto session encryption, so no system libdbus is
+# needed to build. A running Secret Service provider is required at runtime.
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
+
+[dev-dependencies]
+# Reserved for future integration tests that need a sandbox dir
+# (e.g. brewfile_export / brewfile_import) — currently unused by the
+# Wave 3 test pass but kept here so Reality Checker can wire in tests
+# without bumping deps.
+tempfile = "3"

@@ -1,0 +1,38 @@
+{
+  "name": "atlas-desktop",
+  "version": "0.3.2",
+  "description": "Atlas Desktop — AI-Native Command Surface, Vault, Galaxy 3D and Sales OS.",
+  "type": "module",
+  "author": "Sérgio Monteiro / AtlasHub",
+  "repository": "github:sergiomonteiro-atlas/atlas-desktop",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "build:phase-c": "tools/phase-c/phase-c.sh",
+    "build:phase-c:full": "PHASE_C_INCLUDE_VMS=1 tools/phase-c/phase-c.sh",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "test": "node --test tests/atlas-contracts.test.mjs",
+    "tauri": "node tools/tauri-run.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.180.0",
+    "@lucide/svelte": "^1.16.0",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-opener": "^2"
+  },
+  "devDependencies": {
+    "@types/three": "^0.180.0",
+    "@sveltejs/adapter-static": "^3.0.6",
+    "@sveltejs/kit": "^2.9.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@tauri-apps/cli": "^2",
+    "svelte": "^5.0.0",
+    "svelte-check": "^4.0.0",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3"
+  }
+}

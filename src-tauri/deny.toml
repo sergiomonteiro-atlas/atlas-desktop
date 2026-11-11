@@ -1,0 +1,87 @@
+# cargo-deny configuration for brew-browser
+# Goal: meaningful supply-chain hygiene on the macOS-arm64 build, not paranoia.
+# Run: `cargo deny check` from src-tauri/.
+
+[graph]
+# Only check the targets we actually ship — keeps GTK/glib (Linux only) and
+# windows-* (Windows only) advisory noise out of our results without ignoring
+# them invisibly.
+targets = [
+    { triple = "aarch64-apple-darwin" },
+    { triple = "x86_64-apple-darwin" },
+]
+all-features = false
+
+[output]
+feature-depth = 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# advisories — vulnerability + unmaintained-crate database
+# ─────────────────────────────────────────────────────────────────────────────
+[advisories]
+db-path = "$CARGO_HOME/advisory-db"
+db-urls = ["https://github.com/RustSec/advisory-db"]
+yanked = "deny"
+ignore = [
+    # unic-* family is unmaintained but reaches macOS via tauri-utils → urlpattern.
+    # No CVE, no active vulnerability — purely "no longer maintained" warnings.
+    # Acceptable risk; will resolve when tauri-utils migrates off urlpattern's unic deps.
+    { id = "RUSTSEC-2025-0075", reason = "unic-char-range unmaintained; transitive via tauri-utils → urlpattern; no CVE" },
+    { id = "RUSTSEC-2025-0080", reason = "unic-common unmaintained; transitive via tauri-utils → urlpattern; no CVE" },
+    { id = "RUSTSEC-2025-0081", reason = "unic-char-property unmaintained; transitive via tauri-utils → urlpattern; no CVE" },
+    { id = "RUSTSEC-2025-0098", reason = "unic-ucd-version unmaintained; transitive via tauri-utils → urlpattern; no CVE" },
+    { id = "RUSTSEC-2025-0100", reason = "unic-ucd-ident unmaintained; transitive via tauri-utils → urlpattern; no CVE" },
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# licenses — permissive-only allowlist
+# ─────────────────────────────────────────────────────────────────────────────
+[licenses]
+# Allowlist of SPDX identifiers acceptable for a permissive MIT project.
+# Add only on review.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "0BSD",
+    "MPL-2.0",        # weak copyleft, file-level only; fine for libraries
+    "Zlib",
+    "CC0-1.0",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "BSL-1.0",        # Boost
+    "OpenSSL",        # legacy; some old crates still ship it
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.92
+
+# Crates with non-SPDX or ambiguous license files — explicit accept.
+[[licenses.exceptions]]
+allow = ["Unicode-3.0"]
+name = "unicode-ident"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# bans — duplicate-version detection & wildcard rejection
+# ─────────────────────────────────────────────────────────────────────────────
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+allow = []
+deny = []
+skip = []
+skip-tree = []
+
+# ─────────────────────────────────────────────────────────────────────────────
+# sources — registry / git provenance
+# ─────────────────────────────────────────────────────────────────────────────
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

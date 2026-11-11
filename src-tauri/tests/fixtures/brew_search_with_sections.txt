@@ -1,0 +1,8 @@
+==> Formulae
+wget
+wget2
+wgetpaste
+
+==> Casks
+wget-gui
+If you meant "wget" specifically:
