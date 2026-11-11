@@ -1610,8 +1610,8 @@ mod tests {
             .join("frontend-developer.toml");
         assert!(!path.exists(), "Track must not write the agent file");
         assert_eq!(
-            rec.dest,
-            path.to_string_lossy(),
+            PathBuf::from(&rec.dest),
+            path,
             "record points at the canonical dest"
         );
 
@@ -1667,7 +1667,7 @@ mod tests {
             "2026-06-12T00:00:00Z",
         )
         .unwrap();
-        assert_eq!(tracked.dest, conversion_dest.to_string_lossy());
+        assert_eq!(PathBuf::from(&tracked.dest), conversion_dest);
 
         write_agent_files_to(
             &agent,

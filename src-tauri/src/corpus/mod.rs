@@ -1977,7 +1977,7 @@ mod tests {
             .unwrap();
 
         let cats = corpus.categories();
-        assert_eq!(cats.len(), 18, "all declared divisions always returned");
+        assert_eq!(cats.len(), 19, "all declared Atlas divisions always returned");
         let eng = cats.iter().find(|c| c.slug == "engineering").unwrap();
         assert_eq!(eng.count, 2);
         assert_eq!(eng.label, "Engineering");
@@ -2132,7 +2132,7 @@ mod tests {
 
         // The baseline is agency-agents main @ d3f71c4 (2026-10-01): every
         // division's agents, flattened exactly as `corpus_refresh` extracts them.
-        assert_eq!(corpus.count(), 282, "all bundled agent personas indexed");
+        assert_eq!(corpus.count(), 288, "all bundled Atlas agent personas indexed");
         assert!(
             corpus.skipped().is_empty(),
             "no bundled file skipped: {:?}",
@@ -2154,14 +2154,15 @@ mod tests {
         // Spot-check categories that nest agents in subdirs upstream — these are
         // the ones a flat seeding would silently undercount.
         let cats = corpus.categories();
-        assert_eq!(cats.len(), 18, "18 declared divisions");
+        assert_eq!(cats.len(), 19, "19 declared Atlas divisions");
         let count_of = |slug: &str| {
             cats.iter()
                 .find(|c| c.slug == slug)
                 .map(|c| c.count)
                 .unwrap_or(0)
         };
-        assert_eq!(count_of("engineering"), 65);
+        assert_eq!(count_of("engineering"), 66);
+        assert_eq!(count_of("atlashub"), 5);
         assert_eq!(count_of("specialized"), 59);
         // game-development nests agents in unity/, godot/, unreal-engine/ etc.
         // upstream; a flat seeding would silently undercount these.

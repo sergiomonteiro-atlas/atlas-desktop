@@ -38,7 +38,7 @@ import Settings from "@lucide/svelte/icons/settings";
 import Terminal from "@lucide/svelte/icons/terminal";
 import Video from "@lucide/svelte/icons/video";
 
-// Atlas Desktop category icons (the 16 agent categories — agency-categories.json).
+// Atlas Desktop category icons (the 19 agent categories — agency-categories.json).
 import Box from "@lucide/svelte/icons/box";
 import Boxes from "@lucide/svelte/icons/boxes";
 import ClipboardList from "@lucide/svelte/icons/clipboard-list";
@@ -47,6 +47,7 @@ import FlaskConical from "@lucide/svelte/icons/flask-conical";
 import LifeBuoy from "@lucide/svelte/icons/life-buoy";
 import Map from "@lucide/svelte/icons/map";
 import Megaphone from "@lucide/svelte/icons/megaphone";
+import Orbit from "@lucide/svelte/icons/orbit";
 import Network from "@lucide/svelte/icons/network";
 import Workflow from "@lucide/svelte/icons/workflow";
 import Search from "@lucide/svelte/icons/search";
@@ -85,6 +86,7 @@ const ICONS: Record<string, Component> = {
   LifeBuoy,
   Map,
   Megaphone,
+  Orbit,
   Network,
   Search,
   ShieldCheck,
